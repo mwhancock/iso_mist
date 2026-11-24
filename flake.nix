@@ -33,6 +33,7 @@
           # living in the system profile.
           probe-rs-tools
           espflash
+          picocom
         ];
 
         shellHook = ''
