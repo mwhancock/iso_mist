@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use core::{cell::RefCell, fmt::Write};
+use core::{borrow::BorrowMut, cell::RefCell, fmt::Write};
 use defmt_rtt as _;
 use embedded_graphics::{
     mono_font::{MonoTextStyleBuilder, ascii::FONT_9X15},
@@ -69,18 +69,20 @@ fn main() -> ! {
         let sensor = sht40.borrow_mut();
         let mut display_text: String<32> = String::new();
         let saved_reading;
+        let measurement = sensor.measure(Precision::Medium, &mut delay);
 
-        match sensor.read() {
-            Ok(reading) => {
+        match measurement {
+            Ok(measurement) => {
                 println!(
                     "Temp: {:.1}C\nHumidity: {:.1} %\n\n",
-                    reading.temperature, reading.humidity,
+                    measurement.temperature_celsius(),
+                    measurement.humidity_percent(),
                 );
-                saved_reading = reading;
+                saved_reading = measurement;
             }
             Err(_e) => {
-                println!("Failed to read from SHT31 sensor");
-                saved_reading = Reading {
+                println!("Failed to read from SHT40 sensor");
+                saved_reading = Measurement {
                     temperature: -1.0,
                     humidity: -1.0,
                 };
