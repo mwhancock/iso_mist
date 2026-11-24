@@ -66,7 +66,7 @@ fn main() -> ! {
 
     loop {
         //initialize sensor handle
-        let sensor = sht40_driver.borrow_mut();
+        let sensor = sht40.borrow_mut();
         let mut display_text: String<32> = String::new();
         let saved_reading;
 
