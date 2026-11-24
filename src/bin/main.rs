@@ -3,19 +3,16 @@
 
 use core::{cell::RefCell, fmt::Write};
 use defmt_rtt as _;
-use embassy_embedded_hal::{
-    adapter::BlockingAsync
-};
 use embedded_graphics::{
     mono_font::{MonoTextStyleBuilder, ascii::FONT_9X15},
     pixelcolor::BinaryColor,
     prelude::*,
     text::{Baseline, Text},
 };
-use embassy_time::Delay;
 use embedded_hal_bus::i2c::RefCellDevice;
 use esp_backtrace as _;
 use esp_hal::{
+    delay::Delay,
     gpio::{Level, Output, OutputConfig},
     i2c::master::I2c,
     main,
@@ -23,7 +20,7 @@ use esp_hal::{
 use esp_println::println;
 use heapless::String;
 use sht4x::{
-    Sht4xAsync,
+    Sht4x,
     Precision,
     Measurement,
     Error
