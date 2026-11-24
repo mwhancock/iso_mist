@@ -14,17 +14,12 @@ use esp_backtrace as _;
 use esp_hal::{
     delay::Delay,
     gpio::{Level, Output, OutputConfig},
-    i2c::master::I2c,
+    i2c::master::{Config, I2c},
     main,
 };
 use esp_println::println;
 use heapless::String;
-use sht4x::{
-    Sht4x,
-    Precision,
-    Measurement,
-    Error
-};
+use sht4x::{Error, Measurement, Precision, Sht4x};
 use ssd1306::{I2CDisplayInterface, Ssd1306, prelude::*};
 
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -32,20 +27,25 @@ esp_bootloader_esp_idf::esp_app_desc!();
 #[main]
 fn main() -> ! {
     let delay = Delay::new();
+    let mut relay_on = false;
 
     //SHARED I2C BUS SETUP
     //init peripherals and define sda and scl pins
-    let peripherals = esp_hal::init(esp_hal::Config::default());
+    let peripherals = esp_hal::init(Default::default());
     let sda = peripherals.GPIO22;
     let scl = peripherals.GPIO23;
-    let mut relay_control = Output::new(peripherals.GPIO1, Level::Low, OutputConfig::default());
+    let mut relay_control = Output::new(peripherals.GPIO0, Level::Low, OutputConfig::default());
 
     //create a RefCell for the shared bus so that multiple devices can safely borrow the reference to it
-    let shared_bus = RefCell::new(I2cDevice::new(peripherals.I2C0).with_sda(sda).with_scl(scl));
+    let shared_bus = RefCell::new(
+        I2c::new(peripherals.I2C0, Config::default())
+            .unwrap()
+            .with_sda(sda)
+            .with_scl(scl),
+    );
 
     //setup sht40 enviro sensor, pointing it to the shared_bus reference
-    let mut sht40_driver = ;
-    let mut relay_on = false;
+    let mut sht40 = Sht4x::new(RefCellDevice::new(&shared_bus));
 
     //setup internal oled display, pointing it to the shared_bus reference
     let display_interface = I2CDisplayInterface::new(RefCellDevice::new(&shared_bus));
