@@ -100,8 +100,7 @@ fn main() -> ! {
                     "Temp: {:.1} C\nHum: {:.1} %",
                     values.temperature_celsius(),
                     values.humidity_percent(),
-                )
-                .unwrap();
+                )?;
 
                 //draws the formatted text to the displays drawing buffer
                 Text::with_baseline(&display_text, Point::zero(), text_style, Baseline::Top)
