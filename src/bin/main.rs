@@ -86,7 +86,7 @@ fn main() -> ! {
 
         match readings {
             Some(values) => {
-                //writes formatted_string to oled display
+                //formats the string for the oled display
                 write!(
                     &mut display_text,
                     "Temp: {:.1} C\nHum: {:.1} %",
@@ -94,16 +94,16 @@ fn main() -> ! {
                     values.humidity_percent(),
                 )
                 .unwrap();
-                //takes formatted text and translates it into something that the oled can display
-                let _ =
-                    Text::with_baseline(&display_text, Point::zero(), text_style, Baseline::Top)
-                        .draw(&mut display);
+
+                //takes the formatted string and draws it to the display
+                Text::with_baseline(&display_text, Point::zero(), text_style, Baseline::Top)
+                    .draw(&mut display)?;
 
                 //draws to the display
-                display.flush().unwrap();
+                display.flush()?;
 
                 //clears display at end of loop so that values dont stack until it becomes unreadable
-                display.clear(BinaryColor::Off).unwrap();
+                display.clear(BinaryColor::Off).flush()?;
 
                 //relay control logic
                 if !relay_on && values.humidity_percent() < 55.0 {
