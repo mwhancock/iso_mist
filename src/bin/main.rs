@@ -4,6 +4,13 @@
 //IMPORTS
 use core::{cell::RefCell, fmt::Write};
 use defmt_rtt as _;
+use embassy_executer::Spawner;
+use embassy_net::{
+    Runner, StackResources,
+    dns::DnsSocket,
+    tcp::client::{TcpClient, TcpClientState},
+};
+use embassy_time::{Duration, Timer};
 use embedded_graphics::{
     mono_font::{MonoTextStyleBuilder, ascii::FONT_9X15},
     pixelcolor::BinaryColor,
@@ -11,23 +18,45 @@ use embedded_graphics::{
     text::{Baseline, Text},
 };
 use embedded_hal_bus::i2c::RefCellDevice;
+use esp_alloc as _;
 use esp_backtrace as _;
 use esp_hal::{
+    clock::CpuClock,
     delay::Delay,
     gpio::{Level, Output, OutputConfig},
     i2c::master::{Config, I2c},
-    main,
+    main, ram,
+    rmg::Rng,
+    timer::timg::TimerGroup,
 };
 use esp_println::println;
+use esp_radio::wifi::{
+    AuthenticationMethodConfig, Config, ControllerConfig, Interface, WifiController,
+    scan::ScanConfig, sta::StationConfig,
+};
 use heapless::String;
+use reqwless::{
+    client::HttpClient,
+    request::{Method, RequestBuilder},
+};
 use sht4x::{Precision, Sht4x};
 use ssd1306::{I2CDisplayInterface, Ssd1306, prelude::*};
 
 //embeds project and build metadata in the firmware image
 esp_bootloader_esp_idf::esp_app_desc!();
 
+macro_rules! mk_static {
+    ($t:ty, $val:expr) => {{
+        static CELL: static_cell::StaticCell<$t> = static_cell::StaticCell::new();
+        CELL.uninit().write($val)
+    }};
+}
+
+const SSID: &str = "IsoMist";
+const PASSWORD: &str = "MakeThemBoisDamp!";
+
 #[main]
-fn main() -> ! {
+async fn main(spawner: Spawner) -> ! {
     let mut delay = Delay::new();
     let mut relay_on = false;
 
@@ -99,18 +128,24 @@ fn main() -> ! {
                     &mut display_text,
                     "Temp: {:.1} C\nHum: {:.1} %",
                     values.temperature_celsius(),
-                    values.humidity_percent(),
-                )?;
+                    values.humidity_percent().is_err() {
+                        log::warn!("display buffer full!");
+                    },
+                );
 
                 //draws the formatted text to the displays drawing buffer
                 Text::with_baseline(&display_text, Point::zero(), text_style, Baseline::Top)
-                    .draw(&mut display)?;
+                    .draw(&mut display);
 
-                //draws the pending buffer to the display
-                display.flush()?;
+                //draws the pending buffer to the display. if error, log result
+                if let Err(e) = display.flush() {
+                    log::warn!("display flush failed: {e:?}");
+                }
 
-                //clears display buffer at end of loop so that values dont stack and become unreadable
-                display.clear(BinaryColor::Off)?;
+                //clears display buffer at end of loop so that values dont stack and become unreadable. if error, log result
+                if let Err(e) = display.clear(BinaryColor::Off) {
+                    log::warn!("display clear failed: {e:?}");
+                }
 
                 //RELAY CONTROL LOGIC
                 //ideal enclosure humidity is in the range of 50% - 75%, set hysteresis to fall
@@ -135,17 +170,21 @@ fn main() -> ! {
                     text_style,
                     Baseline::Top,
                 )
-                .draw(&mut display)?;
+                .draw(&mut display);
 
-                //draws to the display
-                display.flush()?;
+                //draws to the display. if error, log result
+                if let Err(e) = display.flush() {
+                    log::warn!("display flush failed: {e:?}");
+                }
 
-                //clears display at end of loop so that values dont stack until it becomes unreadable
-                display.clear(BinaryColor::Off)?;
+                //clears display at end of loop so that values dont stack until it becomes unreadable. if error, log result
+                if let Err(e) = display.clear(BinaryColor::Off) {
+                    log::warn!("display clear failed: {e:?}");
+                }
             }
         };
 
         //delay so that the loop only runs once per second
-        delay.delay_millis(1000);
+        Timer::after(Duration::from_secs(1)).await;
     }
 }
