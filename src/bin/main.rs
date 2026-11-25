@@ -92,11 +92,20 @@ fn main() -> ! {
                     "Temp: {:.1} C\nHum: {:.1} %",
                     values.temperature_celsius(),
                     values.humidity_percent(),
-                );
+                )
+                .unwrap();
                 //takes formatted text and translates it into something that the oled can display
-                Text::with_baseline(&display_text, Point::zero(), text_style, Baseline::Top)
-                    .draw(&mut display);
+                let _ =
+                    Text::with_baseline(&display_text, Point::zero(), text_style, Baseline::Top)
+                        .draw(&mut display);
 
+                //draws to the display
+                display.flush().unwrap();
+
+                //clears display at end of loop so that values dont stack until it becomes unreadable
+                display.clear(BinaryColor::Off).unwrap();
+
+                //relay control logic
                 if !relay_on && values.humidity_percent() < 55.0 {
                     relay_control.set_high();
                     relay_on = true;
@@ -105,20 +114,22 @@ fn main() -> ! {
                     relay_control.set_low();
                     relay_on = false;
                 }
-                //draws to the display
-                display.flush().unwrap();
-
-                //clears display at end of loop so that values dont stack until it becomes unreadable
-                display.clear(BinaryColor::Off).unwrap();
             }
             None => {
-                Text::with_baseline(
+                //displays error message if no readings are found
+                let _ = Text::with_baseline(
                     "Could not connect to sensor",
                     Point::zero(),
                     text_style,
                     Baseline::Top,
                 )
                 .draw(&mut display);
+
+                //draws to the display
+                display.flush().unwrap();
+
+                //clears display at end of loop so that values dont stack until it becomes unreadable
+                display.clear(BinaryColor::Off).unwrap();
             }
         };
 
