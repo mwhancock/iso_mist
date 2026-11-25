@@ -1,6 +1,6 @@
 # Iso Mist — Automatic Isopod Misting System
 
-Bare-metal (`no_std`) async Rust firmware for a **Seeed Studio XIAO ESP32-C6** that keeps an isopod (terrarium) enclosure at a target humidity band. The firmware polls a temperature/humidity sensor over I2C, shows live readings on the onboard OLED, and drives a relay that switches a diaphragm pump when humidity falls too low.
+Bare-metal (`no_std`) async Rust firmware for a **Seeed Studio XIAO ESP32-C6** that keeps an isopod terrarium at a target humidity band. The firmware polls a temperature/humidity sensor over I2C, shows live readings on the onboard OLED, and drives a relay that switches a diaphragm pump when humidity falls too low.
 
 The project is an educational embedded-Rust build: everything is written against `esp-hal`, `embassy`, and hardware-abstraction traits, with no RTOS and no dynamic allocation in the control path.
 
