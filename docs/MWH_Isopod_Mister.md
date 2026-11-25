@@ -57,7 +57,7 @@ graph TD
         OLED["SSD1306 0.96 OLED Display"] ~~~ SHT["SHT31-D Temperature & Humidity Sensor"]
 
         SHT -->|Shared I2C Bus| MCU["Seeed Studio XIAO ESP32-C6<br>(Rust Firmware)"]
-        OLED -.->|Shared I2C Bus| MCU
+        MCU -.->|Shared I2C Bus| OLED
 
         MCU -->|GPIO Output| Relay["5V Relay Module"]
         Relay --> Pump["R385 Diaphragm Pump"]
