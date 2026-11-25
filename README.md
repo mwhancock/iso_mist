@@ -21,26 +21,6 @@ If the sensor read fails, the OLED shows an error message and the control loop c
 
 ---
 
-## Hardware
-
-| Role | Part |
-| --- | --- |
-| MCU / board | Seeed Studio XIAO ESP32-C6 |
-| Carrier | Seeed Studio XIAO Expansion Board (built-in OLED) |
-| Sensor | SHT40 / SHT31-D temperature & humidity, I2C |
-| Display | SSD1306 128×64 OLED, I2C |
-| Actuator | 5 V single-channel relay → R385 diaphragm pump |
-| Plumbing | 1/4" pneumatic tubing, reptile misting nozzle |
-| Power | 12 V DC supply (pump), 5 V logic |
-
-### Pin mapping (from `src/bin/main.rs`)
-
-| Signal | GPIO | Notes |
-| --- | --- | --- |
-| I2C SDA | GPIO22 | shared bus: sensor + OLED |
-| I2C SCL | GPIO23 | shared bus: sensor + OLED |
-| Relay control | GPIO0 | `Level::Low` = pump off at boot |
-
 ### Bill of materials
 
 | Qty | Component | Notes |
@@ -53,6 +33,14 @@ If the sensor read fails, the OLED shows an error message and the control loop c
 | 1 | R385 diaphragm pump | driven through the relay |
 | 1 | Reptile misting nozzle | |
 | — | 1/4" pneumatic tubing | pump → nozzle run |
+
+### Pin mapping
+
+| Signal | GPIO | Notes |
+| --- | --- | --- |
+| I2C SDA | GPIO22 | shared bus: sensor + OLED |
+| I2C SCL | GPIO23 | shared bus: sensor + OLED |
+| Relay control | GPIO0 | `Level::Low` = pump off at boot |
 
 ### Block diagram
 
@@ -153,25 +141,6 @@ cargo test
 | `embedded-hal-bus` | `RefCellDevice` for sharing one I2C bus across two devices |
 | `heapless` | fixed-capacity `String` — no heap in the display path |
 | `defmt`, `defmt-rtt`, `esp-backtrace` | logging, RTT transport, panic backtraces |
-
----
-
-## Roadmap
-
-The project follows the six-week plan in `docs/Terrarium_Mister_Rust_Roadmap.md`. The milestone names below match that document:
-
-- **Milestone 1 — Bare-Metal Setup & Hardware I/O** (toolchain, `no_std` skeleton, I2C sensor reads, relay switching)
-- **Milestone 2 — Async Architecture & Safety State Machine** (embassy timers, hysteresis/lockout state machine, `heapless` data)
-- **Milestone 3 — Wireless Connectivity & Home Assistant Integration** (Wi-Fi via `esp-radio`, MQTT telemetry and auto-discovery)
-- **Milestone 4 — Hardware Integration & Enclosure Polish** (solder, enclosure, soak test)
-
----
-
-## Notes for contributors
-
-- Keep the control path `no_std` and allocation-free; prefer `heapless` over `alloc` in the loop.
-- All I2C peripherals share one bus through `embedded_hal_bus::i2c::RefCellDevice`.
-- The sensor driver currently used is `sht4x` (SHT40); the project brief also lists an SHT31-D — reconcile the sensor part before ordering.
 
 ---
 
