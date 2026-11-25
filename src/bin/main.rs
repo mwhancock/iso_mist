@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use core::{borrow::BorrowMut, cell::RefCell, fmt::Write};
+use core::{cell::RefCell, fmt::Write};
 use defmt_rtt as _;
 use embedded_graphics::{
     mono_font::{MonoTextStyleBuilder, ascii::FONT_9X15},
@@ -19,14 +19,14 @@ use esp_hal::{
 };
 use esp_println::println;
 use heapless::String;
-use sht4x::{Error, Measurement, Precision, Sht4x};
+use sht4x::{Precision, Sht4x};
 use ssd1306::{I2CDisplayInterface, Ssd1306, prelude::*};
 
 esp_bootloader_esp_idf::esp_app_desc!();
 
 #[main]
 fn main() -> ! {
-    let delay = Delay::new();
+    let mut delay = Delay::new();
     let mut relay_on = false;
 
     //SHARED I2C BUS SETUP
@@ -66,71 +66,61 @@ fn main() -> ! {
 
     loop {
         //initialize sensor handle
-        let sensor = sht40.borrow_mut();
         let mut display_text: String<32> = String::new();
-        let saved_reading;
-        let measurement = sensor.measure(Precision::Medium, &mut delay);
+        let measurement = sht40.measure(Precision::Medium, &mut delay);
 
-        match measurement {
-            Ok(measurement) => {
+        let readings = match measurement {
+            Ok(values) => {
                 println!(
-                    "Temp: {:.1}C\nHumidity: {:.1} %\n\n",
-                    measurement.temperature_celsius(),
-                    measurement.humidity_percent(),
+                    "Temp: {} C\nHumidity: {} %\n\n",
+                    values.temperature_celsius(),
+                    values.humidity_percent(),
                 );
-                saved_reading = measurement;
+                Some(values)
             }
             Err(_e) => {
                 println!("Failed to read from SHT40 sensor");
-                saved_reading = Measurement {
-                    temperature: -1.0,
-                    humidity: -1.0,
-                };
+                None
             }
-        }
+        };
 
-        //initialize display handle
-        let oled = display.borrow_mut();
+        match readings {
+            Some(values) => {
+                //writes formatted_string to oled display
+                write!(
+                    &mut display_text,
+                    "Temp: {:.1} C\nHum: {:.1} %",
+                    values.temperature_celsius(),
+                    values.humidity_percent(),
+                );
+                //takes formatted text and translates it into something that the oled can display
+                Text::with_baseline(&display_text, Point::zero(), text_style, Baseline::Top)
+                    .draw(&mut display);
 
-        if saved_reading.temperature == -1.0 || saved_reading.humidity == -1.0 {
-            Text::with_baseline(
-                "Could not connect to sensor",
-                Point::zero(),
-                text_style,
-                Baseline::Top,
-            )
-            .draw(oled)
-            .unwrap();
-        } else {
-            //writes formatted_string to oled display
-            write!(
-                &mut display_text,
-                "Temp: {:.1} C\nHum: {:.1} %",
-                saved_reading.temperature, saved_reading.humidity,
-            )
-            .unwrap();
+                if !relay_on && values.humidity_percent() < 55.0 {
+                    relay_control.set_high();
+                    relay_on = true;
+                }
+                if relay_on && values.humidity_percent() >= 65.0 {
+                    relay_control.set_low();
+                    relay_on = false;
+                }
+                //draws to the display
+                display.flush().unwrap();
 
-            //takes formatted text and translates it into something that the oled can display
-            Text::with_baseline(&display_text, Point::zero(), text_style, Baseline::Top)
-                .draw(oled)
-                .unwrap();
-        }
-
-        //draws to the display
-        oled.flush().unwrap();
-
-        //clears display at end of loop so that values dont stack until it becomes unreadable
-        oled.clear(BinaryColor::Off).unwrap();
-
-        if !relay_on && saved_reading.humidity < 55.0 {
-            relay_control.set_high();
-            relay_on = true;
-        }
-
-        if relay_on && saved_reading.humidity >= 65.0 {
-            relay_control.set_low();
-            relay_on = false;
-        }
+                //clears display at end of loop so that values dont stack until it becomes unreadable
+                display.clear(BinaryColor::Off).unwrap();
+            }
+            None => {
+                Text::with_baseline(
+                    "Could not connect to sensor",
+                    Point::zero(),
+                    text_style,
+                    Baseline::Top,
+                )
+                .draw(&mut display);
+            }
+        };
 
         delay.delay_millis(1000);
     }
